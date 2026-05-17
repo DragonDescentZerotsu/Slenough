@@ -1,24 +1,35 @@
-//
-//  ContentView.swift
-//  SleepKitProbe
-//
-//  Created by Kiria Nozan on 5/16/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var manager = HealthKitManager()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            DashboardView(manager: manager)
+                .tabItem {
+                    Label("Dashboard", systemImage: "gauge")
+                }
+
+            SampleListView(samples: manager.recentSamplesForDisplay)
+                .tabItem {
+                    Label("Samples", systemImage: "bed.double")
+                }
+
+            LogListView(events: manager.observerEvents, appEvents: manager.appEvents)
+                .tabItem {
+                    Label("Logs", systemImage: "list.bullet.rectangle")
+                }
+
+            ExportView(manager: manager)
+                .tabItem {
+                    Label("Export", systemImage: "square.and.arrow.up")
+                }
         }
-        .padding()
     }
 }
 
-#Preview {
-    ContentView()
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
 }
