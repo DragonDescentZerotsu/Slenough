@@ -1,5 +1,172 @@
 # AGENTS.md — SleepKit Probe / Apple Watch 真实睡眠时长唤醒项目
 
+## 当前状态：Phase 2 Watch-side Sensor Probe
+
+截至当前分支 `custom-asleep`，项目已经从 Phase 1 的 HealthKit `sleepAnalysis` 实时性验证，进入 Phase 2 的 Apple Watch 端自研 awake/asleep 采集验证。
+
+Phase 1 真机结论：
+
+1. iOS App 可以读取 HealthKit `sleepAnalysis`。
+2. `HKObserverQuery` / `HKAnchoredObjectQuery` 可以在 HealthKit store 出现新 sleep samples 后检测更新。
+3. Apple Watch / Apple Health 不会在睡眠过程中可靠实时写入官方睡眠阶段。
+4. 用户醒来后，打开 Apple Health 之前，本 App 手动 refresh 也可能读不到新 sleep samples。
+5. HealthKit `sleepAnalysis` 后续只用于 post-hoc evaluation，不再作为实时触发源。
+
+Phase 2 当前目标：
+
+> Watch 端在用户主动点击 `Start Session` 后，记录 motion epoch、heart-rate availability、estimated awake/asleep state，并通过 WatchConnectivity 同步低频 summary 到 iPhone，第二天再和 Apple Health 官方 sleepAnalysis 做对比。
+
+Phase 2 仍然不是正式闹钟。UI 和 README 必须持续提示：这是实验性采集工具，不是可靠闹钟，测试时必须另设系统闹钟作为保底。
+
+---
+
+## Phase 2 当前代码入口速查
+
+### Xcode Targets / Schemes
+
+```text
+SleepKitProbe.xcodeproj
+  Targets:
+    SleepKitProbe              iOS app
+    SleepKitProbe Watch App    watchOS app
+    SleepKitProbeTests         iOS unit tests
+
+  Shared schemes:
+    SleepKitProbe
+    SleepKitProbe Watch App
+```
+
+- `SleepKitProbe` scheme：运行 iPhone app，并嵌入安装 Watch app。真机测试时选择 paired iPhone + Apple Watch。
+- `SleepKitProbe Watch App` scheme：单独运行或 preview Watch UI。查看 Watch UI preview 时打开 `WatchApp/WatchContentView.swift`，选择 Apple Watch simulator destination。
+
+### Watch App
+
+```text
+WatchApp/
+  SleepWatchProbeApp.swift
+  WatchContentView.swift
+  WatchSessionManager.swift
+  MotionSampler.swift
+  HeartRateSampler.swift
+  WatchConnectivitySender.swift
+  WatchLocalLogStore.swift
+  WatchApp.entitlements
+```
+
+- `SleepWatchProbeApp.swift`：Watch SwiftUI App 入口。
+- `WatchContentView.swift`：Watch 端极简测试 UI。显示 status、current state、estimated sleep、heart rate、motion score、battery，并提供 `Start Session` / `Stop Session` / `Mark Awake` / `Mark Asleep` / `Export/Sync Now`。
+- `WatchSessionManager.swift`：Watch 端核心 session 管理。负责 session 生命周期、extended runtime、motion sampler、heart-rate sampler、rule engine、epoch 生成、本地日志和 WatchConnectivity 发送。
+- `MotionSampler.swift`：使用 `CMMotionManager` 采集加速度，每个 epoch 聚合 mean/std/magnitude/motionScore/motionBurstCount。当前 `motionScore = accelMagnitudeStd`。
+- `HeartRateSampler.swift`：使用 HealthKit authorization + `HKWorkoutSession` + `HKLiveWorkoutBuilder` 尝试采集 heart rate。不可用时不崩溃，epoch 中记录 availability。
+- `WatchConnectivitySender.swift`：Watch -> iPhone 低频 summary 同步。实时 reachable 时用 `sendMessage`，同时用 `transferUserInfo` 保底。
+- `WatchLocalLogStore.swift`：Watch 本地 JSONL 日志。不能只依赖 iPhone 实时同步。
+- `WatchApp.entitlements`：Watch HealthKit entitlement。
+
+### Shared Phase 2 Logic
+
+```text
+Shared/
+  Phase2Models.swift
+  SleepRuleEngine.swift
+  Phase2CSVEncoder.swift
+```
+
+- `Phase2Models.swift`：`SleepState`、`ProbeSessionState`、`SleepRuleConfig`、`EpochSummary`、`WatchEpoch`、`WatchEventRecord` 等共享模型。
+- `SleepRuleEngine.swift`：第一版可解释 motion-first 规则模型。默认 settling 10 分钟，连续低 motion 才判定 asleep，高 motion/burst 判定 awake/restless。只累计 `predictedState == asleep` 的 epoch。
+- `Phase2CSVEncoder.swift`：导出 Watch epoch summary 和 Watch event CSV。
+
+### iPhone Phase 2 UI / Sync
+
+```text
+SleepKitProbe/
+  ContentView.swift
+  Views/
+    WatchProbeView.swift
+  WatchSync/
+    PhoneWatchConnectivityManager.swift
+    WatchEpochStore.swift
+```
+
+- `ContentView.swift`：主 TabView 现在包含 `Dashboard` / `Samples` / `Logs` / `Watch` / `Export`。
+- `WatchProbeView.swift`：iPhone 端 Watch 调试页。显示 connection、latest epoch、estimated sleep、state、heart rate、motion score、battery、epoch count，并支持 `Send Goal to Watch`、`Request Watch Sync`、`Export Epoch CSV`、`Export Watch Event CSV`。
+- `PhoneWatchConnectivityManager.swift`：iPhone 端 WatchConnectivity 接收与配置下发。
+- `WatchEpochStore.swift`：iPhone 本地保存收到的 `EpochSummary` / `WatchEventRecord`，并导出 `watch_epoch_summaries.csv` / `watch_events.csv`。
+
+### Phase 1 保留用途
+
+```text
+SleepKitProbe/HealthKit/
+SleepKitProbe/Logging/
+SleepKitProbe/Models/
+```
+
+Phase 1 的 HealthKit sleepAnalysis 读取、observer、anchored query、CSV/JSONL 导出仍保留，但语义已经变为：
+
+- 不再用于实时叫醒触发。
+- 第二天读取 Apple 官方 sleepAnalysis。
+- 与 Watch-side estimated sleep/wake 结果做 post-hoc comparison。
+- 继续导出 `sleep_samples.csv` / `observer_events.csv` / `sleepkit_probe_log.jsonl`。
+
+### Phase 2 文档
+
+```text
+README.md
+README_PHASE1.md
+README_PHASE2.md
+Docs/
+  phase1_healthkit_findings.md
+  phase2_watch_probe_protocol.md
+  sensor_permissions.md
+  license_notes.md
+```
+
+- `README.md`：项目入口，说明当前 Phase 2 怎么安装、preview、白天短测、夜间测试。
+- `README_PHASE2.md`：Phase 2 详细使用说明。
+- `Docs/phase1_healthkit_findings.md`：Phase 1 实验结论和 HealthKit 非实时判断。
+- `Docs/phase2_watch_probe_protocol.md`：白天短测和夜间测试协议。
+- `Docs/sensor_permissions.md`：iOS / Watch 权限说明。
+- `Docs/license_notes.md`：外部算法参考和许可证注意事项。
+
+### Phase 2 Tests
+
+```text
+SleepKitProbeTests/
+  SleepRuleEngineTests.swift
+  Phase2CSVEncoderTests.swift
+```
+
+- `SleepRuleEngineTests.swift`：验证 settling period、连续低 motion、high motion wake、manual override。
+- `Phase2CSVEncoderTests.swift`：验证 Watch epoch/event CSV header、日期、数值和 escaping。
+
+### 当前验证命令
+
+```bash
+xcodebuild build \
+  -project SleepKitProbe.xcodeproj \
+  -scheme SleepKitProbe \
+  -destination generic/platform=iOS \
+  -derivedDataPath /tmp/SleepKitProbeDerivedData \
+  CODE_SIGNING_ALLOWED=NO
+
+xcodebuild build \
+  -project SleepKitProbe.xcodeproj \
+  -scheme "SleepKitProbe Watch App" \
+  -destination generic/platform=watchOS \
+  -derivedDataPath /tmp/SleepKitProbeDerivedData \
+  CODE_SIGNING_ALLOWED=NO
+
+xcodebuild build-for-testing \
+  -project SleepKitProbe.xcodeproj \
+  -scheme SleepKitProbe \
+  -destination generic/platform=iOS \
+  -derivedDataPath /tmp/SleepKitProbeDerivedData \
+  CODE_SIGNING_ALLOWED=NO
+```
+
+注意：Codex 当前环境可能没有可用 CoreSimulatorService，因此真跑 simulator tests / previews 可能需要用户在本机 Xcode 中执行。
+
+---
+
 ## 0. 项目背景
 
 我们要验证并逐步实现一个 iPhone + Apple Watch 场景下的“睡够再叫”闹钟产品：用户不是设置固定起床时间，而是设置“真实睡眠累计目标”，例如真实睡满 7 小时后再唤醒。

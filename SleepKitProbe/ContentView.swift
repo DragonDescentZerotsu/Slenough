@@ -20,6 +20,11 @@ struct ContentView: View {
                     Label("Logs", systemImage: "list.bullet.rectangle")
                 }
 
+            WatchProbeView()
+                .tabItem {
+                    Label("Watch", systemImage: "applewatch")
+                }
+
             ExportView(manager: manager)
                 .tabItem {
                     Label("Export", systemImage: "square.and.arrow.up")
