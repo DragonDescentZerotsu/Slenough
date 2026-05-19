@@ -6,6 +6,26 @@ Current focus: **Phase 2 Watch-side Sensor Probe**. The Watch app records 1 Hz m
 
 This is not a reliable alarm. During every test, set a normal system alarm as backup.
 
+## Current Implementation Status
+
+Completed on branch `custom-asleep`:
+
+- Phase 1 HealthKit `sleepAnalysis` real-time validation and CSV/JSONL export.
+- watchOS app target with start/stop session UI.
+- 60-second Watch epochs with 1 Hz Core Motion sampling by default.
+- Passive per-epoch HealthKit heart-rate lookup. This reads samples watchOS already saved; it does not force a heart-rate measurement every minute.
+- Motion-first baseline sleep/wake rule engine.
+- Watch local event/epoch logging plus WatchConnectivity summary sync to iPhone.
+- iPhone Watch tab with connection diagnostics, latest epoch display, sync request, and Watch CSV export.
+- Duplicate epoch filtering on iPhone exports.
+
+Not completed yet:
+
+- Automatic smart-alarm wake/vibration behavior.
+- Full post-hoc comparison report between Watch predictions and Apple sleepAnalysis.
+- Open-source model integration or Core ML inference.
+- Product UI, App Store preparation, cloud sync, or accounts.
+
 ## Project Layout
 
 ```text

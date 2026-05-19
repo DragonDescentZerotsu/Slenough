@@ -19,7 +19,7 @@ Expected result:
 - Still periods have lower `motion_score`.
 - Movement periods have a higher `motion_score`.
 - `predicted_state`, `asleep_probability`, and `estimated_sleep_seconds` are populated.
-- Heart-rate fields may be empty if HealthKit/workout collection was unavailable; that should not crash the session.
+- Heart-rate fields may be empty if watchOS did not save a passive HR sample during that epoch; that should not crash the session.
 
 ## Overnight Test
 
@@ -29,9 +29,10 @@ Expected result:
 4. Tap `Start Session`.
 5. Sleep normally while wearing the Watch.
 6. On waking, tap `Stop Session` on Watch.
-7. Open the iPhone app and export Watch epoch CSV.
-8. Open Apple Health so official sleepAnalysis appears.
-9. Return to this app and use Phase 1 HealthKit refresh/export for post-hoc comparison.
+7. Open the iPhone app and tap `Request Watch Sync`.
+8. Export Watch epoch CSV and Watch event CSV.
+9. Open Apple Health so official sleepAnalysis appears.
+10. Return to this app and use Phase 1 HealthKit refresh/export for post-hoc comparison.
 
 ## Interpretation
 
@@ -40,7 +41,8 @@ For Phase 2, the key questions are:
 - Did Watch produce epochs across most of the night?
 - Are missing data periods visible instead of silent?
 - Does motion score separate stillness from movement?
-- Is heart rate available during a user-started session?
+- How often does passive HR appear? Inspect `heart_rate_available` and `heart_rate_sample_count`.
+- Is battery drain acceptable with 1 Hz motion and passive HR, compared with the earlier workout-level HR run?
 - Does estimated sleep duration roughly track Apple Health after the fact?
 
 Do not use HealthKit sleepAnalysis as a real-time trigger.

@@ -1,6 +1,30 @@
-# AGENTS.md — SleepKit Probe / SleepEnough Alarm 项目新版计划（Phase 2 重点）
+# AGENTS_v2.md — SleepKit Probe / SleepEnough Alarm Phase 2 计划与进度
 
-> 面向 Codex 的项目级实现说明。请严格按本文件执行。当前项目目标已经从「验证 HealthKit 睡眠数据是否实时」转向「Apple Watch 端自研 sleep/wake 检测」。不要再尝试依赖 Apple 官方 sleepAnalysis 的实时更新，也不要尝试伪装或自动打开 Health App。
+> 面向 Codex 的项目级实现说明。当前项目目标已经从「验证 HealthKit 睡眠数据是否实时」转向「Apple Watch 端自研 sleep/wake 检测」。不要再尝试依赖 Apple 官方 sleepAnalysis 的实时更新，也不要尝试伪装或自动打开 Health App。
+
+## 当前实现进度快照
+
+截至分支 `custom-asleep`：
+
+已完成：
+
+1. Phase 1 HealthKit `sleepAnalysis` 实时性验证、日志和导出。
+2. watchOS App target：`SleepKitProbe Watch App`。
+3. Watch 端 `Start Session` / `Stop Session`、manual awake/asleep 标注、本地 event/epoch 日志。
+4. 默认 60 秒 epoch、`motionSampleHz = 1` 的 Core Motion 聚合。
+5. 默认 passive HealthKit HR：每个 epoch 查询该分钟内 watchOS 已经保存的 heart-rate samples，不启动 workout live HR。
+6. WatchConnectivity summary 同步，含 queued delivery fallback。
+7. iPhone `Watch` tab：connection diagnostics、latest epoch、sync request、Watch event/epoch CSV export。
+8. iPhone export 去重，避免同一 epoch 同时通过 `sendMessage` 和 `transferUserInfo` 到达后重复写出。
+9. Motion-first baseline `SleepRuleEngine`。
+
+仍未完成：
+
+1. App 内一键生成 Watch prediction vs Apple Health sleepAnalysis comparison report。
+2. 真正 smart alarm 唤醒、fallback latest wake time、AlarmKit/本地通知/震动策略。
+3. 开源 sleep classifier / Core ML 模型集成。
+4. 长期后台/extended runtime 合规产品化设计。
+5. App Store 级产品 UI、云同步、账号、隐私政策。
 
 ---
 
@@ -79,7 +103,7 @@ HealthKit 不用于：
 Codex 需要实现并验证以下公开能力：
 
 1. 使用 Core Motion / `CMMotionManager` 在 watchOS 端采集手腕运动数据。
-2. 使用 HealthKit / `HKWorkoutSession` + `HKLiveWorkoutBuilder` 或相关 HealthKit 查询方式获取心率数据。
+2. 使用 HealthKit 读取心率。当前默认实现是每个 epoch 被动查询 watchOS 已保存的 HR samples；`HKWorkoutSession` + `HKLiveWorkoutBuilder` 只作为实验路径保留，不默认启用。
 3. 使用 `WKExtendedRuntimeSession`，尤其关注 smart alarm 适用场景，支持一段时间内监测心率和运动，并在合适时间发出提醒。
 4. 使用 WatchConnectivity 在 Watch 与 iPhone 之间同步低频 summary 数据。
 
@@ -362,10 +386,10 @@ mean(abs(|accel|-1g)) 或 accelMagnitudeStd
 
 实现 `HeartRateSampler`。
 
-Phase 2 可以尝试两种方式，但优先实现稳定版本：
+Phase 2 已经实现两种路径中的低功耗默认路径：
 
-1. `HKWorkoutSession` + `HKLiveWorkoutBuilder`
-2. HealthKit anchored query / observer query 读取最新 heart rate sample
+1. 默认：HealthKit `HKSampleQuery` 按 epoch 时间窗读取已存在的 heart-rate samples。
+2. 保留实验代码：`HKWorkoutSession` + `HKLiveWorkoutBuilder`，可用于对比 workout-level HR 采集，但默认不接入 session。
 
 最低要求：
 
@@ -379,8 +403,9 @@ Phase 2 可以尝试两种方式，但优先实现稳定版本：
 注意：
 
 ```text
-HKWorkoutSession 可能影响 Activity Rings。Phase 2 可以接受，但必须在 README 中明确标注。
-后续产品化阶段需要寻找更合规的 smart alarm / extended runtime 设计。
+默认 passive HR 不会强制 Apple Watch 每分钟测心率，因此 `heartRateAvailable=false` 是预期数据质量信号，不是崩溃或逻辑错误。
+
+`HKWorkoutSession` 可能影响 Activity Rings 并显著增加耗电。后续如果重新接入 workout live HR，必须在 README 中明确标注，并单独记录电量对比。
 ```
 
 ### 6.5 Extended Runtime Session
@@ -566,9 +591,11 @@ Buttons:
 - Send Goal to Watch
 - Request Watch Sync
 - Export Epoch CSV
-- Import/Refresh HealthKit Sleep Data
-- Compare With Apple Sleep
+- Export Watch Event CSV
+- Clear iPhone Watch Logs
 ```
+
+HealthKit refresh/export 仍在 Phase 1 tabs 中；`Compare With Apple Sleep` 是后续计划，当前未实现为按钮。
 
 ### 9.2 设置下发
 
@@ -588,11 +615,14 @@ heartRateDropThreshold
 
 ### 9.3 日志导出
 
-iPhone 必须支持导出：
+iPhone 当前支持导出：
 
 1. Watch epoch CSV
 2. Watch event log CSV
 3. HealthKit sleepAnalysis CSV
+
+后续计划导出：
+
 4. Comparison report JSON 或 CSV
 
 导出字段必须足够完整，方便后续 Python 分析。
@@ -601,7 +631,9 @@ iPhone 必须支持导出：
 
 保留并改造 Phase 1 的 HealthKit 读取代码。
 
-新增比较功能：
+当前状态：Phase 1 的 HealthKit 读取和导出已保留，App 内自动 comparison report 尚未实现。现阶段先手动对比 `watch_epoch_summaries.csv` 和 `sleep_samples.csv`。
+
+后续新增比较功能：
 
 ```text
 1. 读取指定日期区间的 sleepAnalysis。
@@ -626,7 +658,7 @@ iPhone 必须支持导出：
 
 ## 10. Phase 2 验收标准
 
-Codex 实现后，用户应能完成以下测试：
+当前代码已经支持以下测试；其中 app 内 comparison report 仍是后续计划。
 
 ### 10.1 白天短测
 
@@ -662,7 +694,8 @@ Codex 实现后，用户应能完成以下测试：
 4. 醒来后 Watch 点击 Stop Session。
 5. iPhone 请求同步并导出 CSV。
 6. 打开 Health App，让 Apple 官方 sleepAnalysis 出现。
-7. 回到本 App，点击 Compare With Apple Sleep。
+7. 回到本 App，使用 Phase 1 refresh/export 导出 `sleep_samples.csv`。
+8. 手动对比 `watch_epoch_summaries.csv` 和 `sleep_samples.csv`。
 ```
 
 通过标准：
@@ -673,7 +706,7 @@ Codex 实现后，用户应能完成以下测试：
 3. motion 数据连续或缺失段有明确记录。
 4. heart rate 可用性被正确记录。
 5. estimatedSleepSeconds 可以输出。
-6. comparison report 可以生成。
+6. Watch epoch/event CSV 和 HealthKit sleep sample CSV 可以导出。
 7. 电量消耗被记录。
 ```
 
@@ -722,11 +755,11 @@ fallbackAlarmTime
 
 ---
 
-## 12. 开发顺序
+## 12. 开发顺序与当前状态
 
-Codex 请按以下顺序实现，不要跳步。
+下列步骤已经不再是全新的待办清单；保留它们是为了说明 Phase 2 的实现路径和剩余缺口。
 
-### Step 1：整理现有 Phase 1 文档
+### Step 1：整理现有 Phase 1 文档 — 已完成
 
 创建或更新：
 
@@ -743,7 +776,7 @@ Docs/phase1_healthkit_findings.md
 4. HealthKit 在后续作为 post-hoc evaluation 的角色
 ```
 
-### Step 2：添加 Watch App target
+### Step 2：添加 Watch App target — 已完成
 
 在现有 Xcode project 中添加 watchOS App target。
 
@@ -756,7 +789,7 @@ Docs/phase1_healthkit_findings.md
 4. Signing & Capabilities 设置正确。
 ```
 
-### Step 3：实现 Watch UI + SessionManager skeleton
+### Step 3：实现 Watch UI + SessionManager skeleton — 已完成
 
 先让 Watch App 能：
 
@@ -767,37 +800,37 @@ Docs/phase1_healthkit_findings.md
 4. 写本地 event log
 ```
 
-### Step 4：实现 MotionSampler
+### Step 4：实现 MotionSampler — 已完成
 
 先只采集运动，不做心率。
 
 完成白天短测：静止 vs 运动 motionScore 是否明显不同。
 
-### Step 5：实现 epoch 聚合与本地日志
+### Step 5：实现 epoch 聚合与本地日志 — 已完成
 
 每 60 秒输出 `WatchEpoch`。
 
 本地保存 JSONL/CSV。
 
-### Step 6：实现 WatchConnectivity summary 同步
+### Step 6：实现 WatchConnectivity summary 同步 — 已完成
 
 iPhone 能看到 Watch 发来的 epoch。
 
-### Step 7：实现简单 SleepRuleEngine
+### Step 7：实现简单 SleepRuleEngine — 已完成
 
 先用 motion-only 规则判断 asleep/awake。
 
-### Step 8：实现 HeartRateSampler
+### Step 8：实现 HeartRateSampler — 已完成默认 passive HR，保留 workout 实验路径
 
 加入 HealthKit 权限、心率采集和 heart rate epoch 聚合。
 
-### Step 9：实现 post-hoc HealthKit comparison
+### Step 9：实现 post-hoc HealthKit comparison — 部分完成
 
 复用 Phase 1 的 HealthKit sleepAnalysis 读取。
 
-生成 comparison report。
+已能导出 HealthKit sleep samples；App 内自动 comparison report 尚未实现。
 
-### Step 10：写 README 和测试协议
+### Step 10：写 README 和测试协议 — 已完成并持续更新
 
 更新 README：
 
@@ -827,10 +860,11 @@ watchOS target：
 
 ```text
 HealthKit
-Workout Processing / Background Modes（如 Xcode capability 支持）
 WatchConnectivity
 Motion Usage Description（如果需要）
 ```
+
+默认 passive HR 不需要 Workout Processing。只有重新启用 `HKWorkoutSession` 实验路径时，才重新评估 Workout Processing / Background Modes capability。
 
 Info.plist 文案建议：
 
@@ -839,7 +873,7 @@ NSHealthShareUsageDescription:
 This app reads sleep and heart rate data to evaluate sleep detection accuracy.
 
 NSHealthUpdateUsageDescription:
-This app may write workout/session data during sensor collection tests.
+Only needed if the experimental workout HR path is re-enabled. The default passive HR path does not write workouts.
 
 NSMotionUsageDescription:
 This app uses Apple Watch motion data to estimate sleep and wake periods during user-started sessions.
@@ -890,4 +924,3 @@ Codex 当前最重要任务：
 > 让 Apple Watch 能在用户主动点击 Start Session 后，稳定记录一整晚的 motion epoch + heart rate availability + estimated sleep/wake state，并同步/导出到 iPhone，与第二天 Apple Health sleepAnalysis 做对比。
 
 不要被其他需求分散注意力。
-

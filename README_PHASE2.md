@@ -6,6 +6,26 @@ Phase 2 verifies Apple Watch-side motion and heart-rate collection for a future 
 
 Phase 1 showed that Apple Health `sleepAnalysis` is not written in time for real-time wake decisions. HealthKit remains useful for next-day comparison, but Phase 2 estimates awake/asleep on Watch from user-started sensor collection.
 
+## Current Status
+
+Implemented:
+
+- Watch target and `SleepKitProbe Watch App` scheme.
+- Watch `Start Session` / `Stop Session` flow.
+- 60-second epochs with default `motionSampleHz = 1`.
+- Passive HealthKit heart-rate sample lookup for each epoch.
+- Local Watch JSONL logging.
+- WatchConnectivity summary delivery with queued delivery fallback.
+- iPhone Watch tab, connection diagnostics, sync request, CSV export, and duplicate epoch filtering.
+- Baseline motion-first `SleepRuleEngine`.
+
+Still planned:
+
+- One-click comparison report against Apple Health official sleepAnalysis.
+- More robust battery experiments and runtime policy tuning.
+- More advanced sleep/wake classifier features or model import.
+- Real smart-alarm behavior and fallback alarm handling.
+
 ## Install
 
 1. Open `SleepKitProbe.xcodeproj` in Xcode.
@@ -63,6 +83,7 @@ Pass criteria:
 - Still periods have lower `motion_score`.
 - Moving periods have higher `motion_score`.
 - The app does not crash if heart rate is unavailable.
+- `heart_rate_sample_count` shows how many passive HealthKit HR samples existed in each minute.
 - `predicted_state`, `asleep_probability`, and `estimated_sleep_seconds` are populated.
 
 ## Overnight Test
@@ -74,8 +95,9 @@ Pass criteria:
 5. Sleep normally while wearing the Watch.
 6. Tap `Stop Session` after waking.
 7. Export Watch epoch CSV from the iPhone `Watch` tab.
-8. Open Apple Health so official sleep data appears.
-9. Use the existing Phase 1 HealthKit refresh/export flow for next-day comparison.
+8. Export Watch event CSV from the iPhone `Watch` tab.
+9. Open Apple Health so official sleep data appears.
+10. Use the existing Phase 1 HealthKit refresh/export flow for next-day comparison.
 
 ## Watch App Controls
 
@@ -101,6 +123,7 @@ Pass criteria:
 - `start_date` / `end_date`: epoch time window.
 - `motion_score`: current baseline is acceleration magnitude standard deviation.
 - `heart_rate_available`, `heart_rate_latest`, `heart_rate_sample_count`: heart-rate availability.
+- `heart_rate_sample_count`: number of passive HealthKit HR samples found inside that epoch. `0` means watchOS did not provide a sample for that minute.
 - `battery_level`: Watch battery at epoch time.
 - `predicted_state`: `unknown`, `awake`, `asleep`, or `restless`.
 - `asleep_probability`: baseline rule confidence from `0.0` to `1.0`.

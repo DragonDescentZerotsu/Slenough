@@ -4,6 +4,10 @@ SleepKitProbe is a local-only iOS research tool for checking whether Apple Watch
 
 It is not an alarm product yet. It does not upload data, provide medical diagnosis, score sleep, or control the system Clock app.
 
+## Current Status
+
+Phase 1 has served its primary purpose. Full-night testing showed HealthKit `sleepAnalysis` is useful for post-hoc review, but not reliable enough as the real-time trigger for "wake me after enough real sleep." The Phase 1 UI and exports remain in the app for next-day comparison with the Watch-side Phase 2 probe.
+
 ## Prerequisites
 
 - A Mac with Xcode.
@@ -48,16 +52,16 @@ JSONL export creates:
 
 ## How To Judge Results
 
-### Case A: HealthKit may be timely enough
+### Historical Case A: HealthKit may be timely enough
 
-HealthKit-based MVP may be possible if the overnight logs show repeated samples where:
+This was the original success criterion before the overnight test. A HealthKit-based MVP would only have been plausible if the logs had shown repeated samples where:
 
 ```text
 observer_event.triggered_at is close to sleep_sample.sample_end
 sleep_sample.received_at is close to sleep_sample.sample_end
 ```
 
-Delays of minutes to tens of minutes may be workable for early experiments, depending on the product tolerance.
+The actual full-night test did not support this path, so current development no longer treats HealthKit as the real-time trigger.
 
 ### Case B: HealthKit is not timely enough
 

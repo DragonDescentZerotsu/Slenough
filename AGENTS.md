@@ -18,6 +18,26 @@ Phase 2 当前目标：
 
 Phase 2 仍然不是正式闹钟。UI 和 README 必须持续提示：这是实验性采集工具，不是可靠闹钟，测试时必须另设系统闹钟作为保底。
 
+### 当前完成进度
+
+已完成：
+
+1. Watch target / scheme，iPhone app 嵌入安装 Watch app。
+2. Watch 端 `Start Session` / `Stop Session`、manual awake/asleep 标注、本地日志。
+3. 默认 60 秒 epoch、`motionSampleHz = 1`。
+4. 默认 passive HR：每个 epoch 查询该分钟内 watchOS 已保存的 heart-rate samples，不启动 workout live HR。
+5. Baseline `SleepRuleEngine` 输出 `predictedState`、`asleepProbability`、`estimatedSleepSeconds`。
+6. WatchConnectivity summary sync，含 queued delivery fallback。
+7. iPhone `Watch` tab，包含 connection diagnostics、latest epoch、sync request、epoch/event CSV export。
+8. iPhone export 去重，避免 `sendMessage` 和 `transferUserInfo` 双路径导致重复 epoch。
+
+仍未完成：
+
+1. App 内自动生成 Watch prediction vs Apple Health sleepAnalysis comparison report。
+2. 真正 smart alarm 唤醒、fallback latest wake time、AlarmKit/本地通知/震动策略。
+3. 开源 sleep model / Core ML 集成。
+4. 产品化后台运行、电量优化和 App Store 合规设计。
+
 ---
 
 ## Phase 2 当前代码入口速查
@@ -166,6 +186,10 @@ xcodebuild build-for-testing \
 注意：Codex 当前环境可能没有可用 CoreSimulatorService，因此真跑 simulator tests / previews 可能需要用户在本机 Xcode 中执行。
 
 ---
+
+## Archived Phase 1 Original Spec
+
+以下内容是 Phase 1 原始实现说明，保留用于历史背景和维护 Phase 1 HealthKit 读取/导出功能。当前开发入口以上面的 Phase 2 状态、`README.md`、`README_PHASE2.md` 和 `AGENTS_v2.md` 为准；不要把本节中的 “Phase 2/3 暂不实现” 视为当前状态。
 
 ## 0. 项目背景
 

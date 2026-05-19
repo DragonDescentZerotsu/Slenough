@@ -22,3 +22,14 @@ Phase 2 moves the real-time logic to Apple Watch:
 - sync low-frequency summaries to iPhone for display, export, and next-day comparison
 
 HealthKit remains in the project only for next-day official sleep comparison and algorithm calibration.
+
+## Current Implementation Impact
+
+The app now keeps Phase 1 screens and exports for post-hoc validation, but active development has moved to Phase 2:
+
+- Watch records 60-second sensor epochs during a user-started session.
+- Motion sampling defaults to 1 Hz.
+- Heart-rate collection defaults to passive HealthKit epoch queries, not workout-level live HR.
+- iPhone receives Watch summaries and exports `watch_epoch_summaries.csv` / `watch_events.csv`.
+
+The remaining comparison step is still manual: export Watch CSVs, refresh/export HealthKit sleep samples after Apple Health has produced official sleep data, then compare the timelines outside the app.

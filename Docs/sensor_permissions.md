@@ -21,4 +21,11 @@ The Watch app uses:
 
 The default path does not start `HKWorkoutSession`. An experimental live HR path remains in code for future validation, but it can affect Activity rings and battery life.
 
+Current default behavior:
+
+- `motionSampleHz = 1`
+- `epochSeconds = 60`
+- `heartRateSamplingEnabled = true`
+- `extendedRuntimeEnabled = false`
+
 No private entitlements or private APIs are used.
