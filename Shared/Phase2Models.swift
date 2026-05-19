@@ -72,7 +72,7 @@ struct SleepRuleConfig: Codable, Equatable {
         motionBurstThreshold: 2,
         heartRateDropThreshold: 5,
         motionSampleHz: 1,
-        heartRateSamplingEnabled: false,
+        heartRateSamplingEnabled: true,
         extendedRuntimeEnabled: false,
         sleepGoalSeconds: 7 * 60 * 60,
         latestWakeTime: nil,

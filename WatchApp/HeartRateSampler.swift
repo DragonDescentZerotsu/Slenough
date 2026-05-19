@@ -15,6 +15,57 @@ final class HeartRateSampler: NSObject {
     private var workoutBuilder: HKLiveWorkoutBuilder?
     private var values: [Double] = []
 
+    func requestReadAuthorization(completion: @escaping (Result<Void, Error>) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable(),
+              let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else {
+            completion(.failure(HeartRateError.healthDataUnavailable))
+            return
+        }
+
+        healthStore.requestAuthorization(toShare: [], read: [heartRateType]) { success, error in
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard success else {
+                completion(.failure(HeartRateError.authorizationDenied))
+                return
+            }
+            completion(.success(()))
+        }
+    }
+
+    func snapshot(from startDate: Date, to endDate: Date, completion: @escaping (HeartRateSnapshot) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable(),
+              let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else {
+            completion(HeartRateSnapshot(mean: nil, latest: nil, sampleCount: 0))
+            return
+        }
+
+        // Passive low-power path: read heart-rate samples watchOS already saved for this epoch.
+        // This does not force the optical sensor to sample once per minute.
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [])
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
+        let query = HKSampleQuery(sampleType: heartRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, _ in
+            let unit = HKUnit.count().unitDivided(by: .minute())
+            let values = (samples as? [HKQuantitySample] ?? []).map { sample in
+                sample.quantity.doubleValue(for: unit)
+            }
+            guard !values.isEmpty else {
+                completion(HeartRateSnapshot(mean: nil, latest: nil, sampleCount: 0))
+                return
+            }
+            completion(
+                HeartRateSnapshot(
+                    mean: values.reduce(0, +) / Double(values.count),
+                    latest: values.last,
+                    sampleCount: values.count
+                )
+            )
+        }
+        healthStore.execute(query)
+    }
+
     func requestAuthorizationAndStart(completion: @escaping (Result<Void, Error>) -> Void) {
         guard HKHealthStore.isHealthDataAvailable(),
               let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else {

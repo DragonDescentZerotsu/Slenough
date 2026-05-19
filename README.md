@@ -2,7 +2,7 @@
 
 SleepKitProbe is a local-only iPhone + Apple Watch research app for validating a future "sleep enough, then wake" alarm.
 
-Current focus: **Phase 2 Watch-side Sensor Probe**. The Watch app records motion epochs, heart-rate availability, and a baseline awake/asleep estimate during a user-started session. The iPhone app receives low-frequency summaries, displays the latest state, and exports CSV logs.
+Current focus: **Phase 2 Watch-side Sensor Probe**. The Watch app records 1 Hz motion epochs, passive per-epoch heart-rate availability, and a baseline awake/asleep estimate during a user-started session. The iPhone app receives low-frequency summaries, displays the latest state, and exports CSV logs.
 
 This is not a reliable alarm. During every test, set a normal system alarm as backup.
 
@@ -11,7 +11,7 @@ This is not a reliable alarm. During every test, set a normal system alarm as ba
 ```text
 SleepKitProbe.xcodeproj
 SleepKitProbe/        iPhone SwiftUI app, HealthKit post-hoc sleepAnalysis, Watch sync UI
-WatchApp/             watchOS SwiftUI app, sensor session, motion/heart-rate collection
+WatchApp/             watchOS SwiftUI app, sensor session, 1 Hz motion and passive HR queries
 Shared/               shared Phase 2 models, rule engine, CSV encoder
 SleepKitProbeTests/   unit tests
 Docs/                 experiment notes and protocols
@@ -64,7 +64,7 @@ Expected result:
 - Still periods have lower `motion_score`.
 - Moving periods have higher `motion_score`.
 - `predicted_state`, `asleep_probability`, and `estimated_sleep_seconds` are populated.
-- Heart-rate fields may be empty if watchOS does not provide heart-rate samples during the short test.
+- Heart-rate fields may be empty if watchOS does not provide passive heart-rate samples during the test epoch.
 
 ## Overnight Test
 

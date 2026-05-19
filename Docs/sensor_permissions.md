@@ -15,10 +15,10 @@ The Watch app uses:
 
 - Core Motion accelerometer data during a user-started session.
 - HealthKit heart-rate access during a user-started session.
-- A workout session to improve live heart-rate collection reliability in Phase 2.
+- Passive HealthKit heart-rate queries for samples watchOS already saved during each epoch.
 - WatchConnectivity to send epoch summaries to iPhone.
 - Local JSONL logging on Watch so data is not lost if iPhone connectivity is unavailable.
 
-`HKWorkoutSession` can affect Activity rings. Phase 2 accepts this tradeoff for sensor validation; productization needs a more careful smart-alarm runtime design.
+The default path does not start `HKWorkoutSession`. An experimental live HR path remains in code for future validation, but it can affect Activity rings and battery life.
 
 No private entitlements or private APIs are used.

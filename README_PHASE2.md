@@ -14,7 +14,7 @@ Phase 1 showed that Apple Health `sleepAnalysis` is not written in time for real
    - iOS: HealthKit.
    - Watch: HealthKit.
 4. Build/run on a real iPhone paired to a real Apple Watch.
-5. Grant HealthKit sleep permission on iPhone and heart-rate/workout permission on Watch when prompted.
+5. Grant HealthKit sleep permission on iPhone and heart-rate permission on Watch when prompted.
 
 Simulator cannot validate real overnight Watch sensor behavior.
 
@@ -79,7 +79,7 @@ Pass criteria:
 
 ## Watch App Controls
 
-- `Start Session`: begins motion sampling, heart-rate collection attempt, local Watch logging, and epoch summary sync.
+- `Start Session`: begins 1 Hz motion sampling, passive per-epoch heart-rate queries, local Watch logging, and epoch summary sync.
 - `Stop Session`: stops samplers and records session stop events.
 - `Mark Awake`: adds a one-epoch manual awake override for debugging.
 - `Mark Asleep`: adds a one-epoch manual asleep override for debugging.
@@ -144,7 +144,8 @@ These are baseline thresholds for data collection, not final product values.
 ## Current Limits
 
 - The rule engine is a motion-first baseline, not a medical sleep model.
-- Heart-rate collection uses `HKWorkoutSession`, which can affect Activity rings.
+- Default heart-rate collection is passive: each epoch queries HealthKit for heart-rate samples watchOS already saved. This avoids workout-level HR collection, but it may leave `heart_rate_available=false` if watchOS did not save a sample during that minute.
+- The code retains an experimental `HKWorkoutSession` live HR path for future testing. Using that path can affect Activity rings and battery life.
 - Extended runtime availability is recorded but system behavior still depends on watchOS policy.
 - Watch logs are saved locally on Watch; iPhone currently receives low-frequency epoch summaries.
 - HealthKit sleepAnalysis is post-hoc evaluation only, never the real-time trigger.

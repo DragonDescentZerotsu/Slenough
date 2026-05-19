@@ -65,9 +65,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
         }
 
         if config.heartRateSamplingEnabled {
-            heartRateSampler.requestAuthorizationAndStart { [weak self] result in
-                if case .failure(let error) = result {
-                    self?.recordEvent("heart_rate_failed", message: error.localizedDescription)
+            heartRateSampler.requestReadAuthorization { [weak self] result in
+                DispatchQueue.main.async {
+                    if case .failure(let error) = result {
+                        self?.recordEvent("heart_rate_failed", message: error.localizedDescription)
+                    } else {
+                        self?.recordEvent("heart_rate_started", message: "passive_healthkit_epoch_query")
+                    }
                 }
             }
         } else {
@@ -144,7 +148,18 @@ final class WatchSessionManager: NSObject, ObservableObject {
         batteryLevel = Double(WKInterfaceDevice.current().batteryLevel)
         latestMotionScore = stats.motionScore
 
-        let heartRateSnapshot = heartRateSampler.snapshotAndReset()
+        if config.heartRateSamplingEnabled {
+            heartRateSampler.snapshot(from: stats.startDate, to: stats.endDate) { [weak self] snapshot in
+                DispatchQueue.main.async {
+                    self?.finishEpoch(stats, heartRateSnapshot: snapshot, sessionId: sessionId, sessionStartedAt: sessionStartedAt)
+                }
+            }
+        } else {
+            finishEpoch(stats, heartRateSnapshot: HeartRateSnapshot(mean: nil, latest: nil, sampleCount: 0), sessionId: sessionId, sessionStartedAt: sessionStartedAt)
+        }
+    }
+
+    private func finishEpoch(_ stats: MotionEpochStats, heartRateSnapshot: HeartRateSnapshot, sessionId: UUID, sessionStartedAt: Date) {
         latestHeartRate = heartRateSnapshot.latest
         if let latest = heartRateSnapshot.latest {
             captureBaselineHeartRate(latest)

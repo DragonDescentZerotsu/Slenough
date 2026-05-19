@@ -57,7 +57,7 @@ WatchApp/
 - `WatchContentView.swift`：Watch 端极简测试 UI。显示 status、current state、estimated sleep、heart rate、motion score、battery，并提供 `Start Session` / `Stop Session` / `Mark Awake` / `Mark Asleep` / `Export/Sync Now`。
 - `WatchSessionManager.swift`：Watch 端核心 session 管理。负责 session 生命周期、extended runtime、motion sampler、heart-rate sampler、rule engine、epoch 生成、本地日志和 WatchConnectivity 发送。
 - `MotionSampler.swift`：使用 `CMMotionManager` 采集加速度，每个 epoch 聚合 mean/std/magnitude/motionScore/motionBurstCount。当前 `motionScore = accelMagnitudeStd`。
-- `HeartRateSampler.swift`：使用 HealthKit authorization + `HKWorkoutSession` + `HKLiveWorkoutBuilder` 尝试采集 heart rate。不可用时不崩溃，epoch 中记录 availability。
+- `HeartRateSampler.swift`：默认使用 HealthKit read authorization，并在每个 epoch 结束时被动查询该分钟内 watchOS 已保存的 heart-rate samples。它不会强制光学心率传感器每分钟测量一次；不可用时不崩溃，epoch 中记录 `heartRateAvailable=false`。文件中仍保留 `HKWorkoutSession` + `HKLiveWorkoutBuilder` 实验路径，后续如需对比 workout 级 HR 可重新接入。
 - `WatchConnectivitySender.swift`：Watch -> iPhone 低频 summary 同步。实时 reachable 时用 `sendMessage`，同时用 `transferUserInfo` 保底。
 - `WatchLocalLogStore.swift`：Watch 本地 JSONL 日志。不能只依赖 iPhone 实时同步。
 - `WatchApp.entitlements`：Watch HealthKit entitlement。
