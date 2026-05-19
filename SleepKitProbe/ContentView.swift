@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var manager = HealthKitManager()
+    @StateObject private var watchManager = PhoneWatchConnectivityManager()
 
     var body: some View {
         TabView {
@@ -20,7 +21,7 @@ struct ContentView: View {
                     Label("Logs", systemImage: "list.bullet.rectangle")
                 }
 
-            WatchProbeView()
+            WatchProbeView(watchManager: watchManager)
                 .tabItem {
                     Label("Watch", systemImage: "applewatch")
                 }

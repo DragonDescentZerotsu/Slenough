@@ -4,6 +4,7 @@ import WatchConnectivity
 
 final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     @Published private(set) var connectionDescription = "Not Connected"
+    @Published private(set) var diagnosticsDescription = "Unavailable"
     @Published private(set) var lastEpochReceivedAt: Date?
     @Published private(set) var latestSummary: EpochSummary?
     @Published private(set) var statusMessage = "Idle"
@@ -36,6 +37,10 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         store.recordCount
     }
 
+    func refreshConnectionStatus() {
+        updateConnectionDescription()
+    }
+
     func activate() {
         guard WCSession.isSupported() else {
             connectionDescription = "Unsupported"
@@ -50,6 +55,11 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         guard WCSession.isSupported(),
               let data = try? encoder.encode(config) else {
             statusMessage = "WatchConnectivity unavailable"
+            return
+        }
+        guard WCSession.default.activationState == .activated else {
+            statusMessage = "WatchConnectivity is still activating"
+            updateConnectionDescription()
             return
         }
 
@@ -69,6 +79,11 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
 
     func requestWatchSync() {
         guard WCSession.isSupported() else { return }
+        guard WCSession.default.activationState == .activated else {
+            statusMessage = "WatchConnectivity is still activating"
+            updateConnectionDescription()
+            return
+        }
         let payload: [String: Any] = ["type": "request_sync"]
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(payload, replyHandler: nil) { [weak self] error in
@@ -129,9 +144,16 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     private func updateConnectionDescription() {
         guard WCSession.isSupported() else {
             connectionDescription = "Unsupported"
+            diagnosticsDescription = "WCSession unsupported on this device"
             return
         }
         let session = WCSession.default
+        guard session.activationState == .activated else {
+            connectionDescription = "Activating"
+            diagnosticsDescription = "activation=\(session.activationState.rawValue)"
+            return
+        }
+        diagnosticsDescription = "paired=\(session.isPaired) installed=\(session.isWatchAppInstalled) reachable=\(session.isReachable) activation=\(session.activationState.rawValue)"
         if session.isPaired && session.isWatchAppInstalled {
             connectionDescription = session.isReachable ? "Connected" : "Installed, Not Reachable"
         } else if session.isPaired {
@@ -162,6 +184,12 @@ extension PhoneWatchConnectivityManager: WCSessionDelegate {
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
+        DispatchQueue.main.async {
+            self.updateConnectionDescription()
+        }
+    }
+
+    func sessionWatchStateDidChange(_ session: WCSession) {
         DispatchQueue.main.async {
             self.updateConnectionDescription()
         }

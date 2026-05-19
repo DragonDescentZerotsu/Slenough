@@ -58,19 +58,28 @@ final class WatchSessionManager: NSObject, ObservableObject {
         state = .starting
 
         recordEvent("session_started", message: "goalSeconds=\(Int(goalSeconds))")
-        startExtendedRuntime()
-        heartRateSampler.requestAuthorizationAndStart { [weak self] result in
-            if case .failure(let error) = result {
-                self?.recordEvent("heart_rate_failed", message: error.localizedDescription)
-            }
+        if config.extendedRuntimeEnabled {
+            startExtendedRuntime()
+        } else {
+            recordEvent("extended_runtime_skipped", message: "disabled_by_config")
         }
 
-        motionSampler.start(epochSeconds: config.epochSeconds) { [weak self] epochStats in
+        if config.heartRateSamplingEnabled {
+            heartRateSampler.requestAuthorizationAndStart { [weak self] result in
+                if case .failure(let error) = result {
+                    self?.recordEvent("heart_rate_failed", message: error.localizedDescription)
+                }
+            }
+        } else {
+            recordEvent("heart_rate_skipped", message: "disabled_by_config")
+        }
+
+        motionSampler.start(epochSeconds: config.epochSeconds, sampleHz: config.motionSampleHz) { [weak self] epochStats in
             DispatchQueue.main.async {
                 self?.handleMotionEpoch(epochStats)
             }
         }
-        recordEvent("motion_started", message: "epochSeconds=\(Int(config.epochSeconds))")
+        recordEvent("motion_started", message: "epochSeconds=\(Int(config.epochSeconds)) sampleHz=\(config.motionSampleHz)")
         state = .running
     }
 
@@ -97,7 +106,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
     func resumeSession() {
         guard state == .stopped, sessionId != nil else { return }
-        motionSampler.start(epochSeconds: config.epochSeconds) { [weak self] epochStats in
+        motionSampler.start(epochSeconds: config.epochSeconds, sampleHz: config.motionSampleHz) { [weak self] epochStats in
             DispatchQueue.main.async {
                 self?.handleMotionEpoch(epochStats)
             }

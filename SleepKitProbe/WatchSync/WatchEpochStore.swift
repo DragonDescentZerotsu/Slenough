@@ -27,6 +27,15 @@ final class WatchEpochStore {
     }
 
     func append(summary: EpochSummary) {
+        guard !summaries.contains(where: {
+            $0.id == summary.id ||
+            ($0.sessionId == summary.sessionId &&
+             $0.epochIndex == summary.epochIndex &&
+             $0.startDate == summary.startDate &&
+             $0.endDate == summary.endDate)
+        }) else {
+            return
+        }
         summaries.append(summary)
         appendLine(WatchEpochLogLine(type: "epoch_summary", payload: summary))
     }

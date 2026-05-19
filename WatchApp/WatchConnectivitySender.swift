@@ -17,6 +17,7 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
     }()
 
     private var queuedUserInfo: [[String: Any]] = []
+    private var pendingUserInfo: [[String: Any]] = []
 
     override init() {
         super.init()
@@ -33,6 +34,10 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
         }
 
         let payload: [String: Any] = ["type": "epoch_summary", "payload": data]
+        guard WCSession.default.activationState == .activated else {
+            pendingUserInfo.append(payload)
+            return
+        }
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(payload, replyHandler: nil) { [weak self] _ in
                 self?.queuedUserInfo.append(payload)
@@ -42,12 +47,21 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
     }
 
     func flushQueuedUserInfo() {
-        guard WCSession.isSupported() else { return }
+        guard WCSession.isSupported(),
+              WCSession.default.activationState == .activated else {
+            return
+        }
+        pendingUserInfo.forEach { WCSession.default.transferUserInfo($0) }
+        pendingUserInfo.removeAll()
         queuedUserInfo.forEach { WCSession.default.transferUserInfo($0) }
         queuedUserInfo.removeAll()
     }
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        if activationState == .activated {
+            flushQueuedUserInfo()
+        }
+    }
 
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         handle(message)

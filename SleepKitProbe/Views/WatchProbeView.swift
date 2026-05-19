@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WatchProbeView: View {
-    @StateObject private var watchManager = PhoneWatchConnectivityManager()
+    @ObservedObject var watchManager: PhoneWatchConnectivityManager
     @State private var showingShareSheet = false
     @State private var showingClearConfirmation = false
 
@@ -19,9 +19,13 @@ struct WatchProbeView: View {
                     InfoLine(title: "Watch Battery", value: batteryDescription)
                     InfoLine(title: "Epoch Records", value: "\(watchManager.recordCount)")
                     InfoLine(title: "Status", value: watchManager.statusMessage)
+                    InfoLine(title: "Diagnostics", value: watchManager.diagnosticsDescription)
                 }
 
                 Section("Actions") {
+                    Button("Refresh Watch Status", systemImage: "arrow.clockwise") {
+                        watchManager.refreshConnectionStatus()
+                    }
                     Button("Send Goal to Watch", systemImage: "target") {
                         watchManager.sendGoalToWatch()
                     }
@@ -46,6 +50,9 @@ struct WatchProbeView: View {
                 }
             }
             .navigationTitle("Watch Probe")
+            .onAppear {
+                watchManager.refreshConnectionStatus()
+            }
             .sheet(isPresented: $showingShareSheet) {
                 ShareSheet(items: watchManager.exportedURLs)
             }

@@ -54,6 +54,9 @@ struct SleepRuleConfig: Codable, Equatable {
     var highMotionThreshold: Double
     var motionBurstThreshold: Int
     var heartRateDropThreshold: Double
+    var motionSampleHz: Double
+    var heartRateSamplingEnabled: Bool
+    var extendedRuntimeEnabled: Bool
     var sleepGoalSeconds: TimeInterval
     var latestWakeTime: Date?
     var fallbackAlarmTime: Date?
@@ -68,6 +71,9 @@ struct SleepRuleConfig: Codable, Equatable {
         highMotionThreshold: 0.12,
         motionBurstThreshold: 2,
         heartRateDropThreshold: 5,
+        motionSampleHz: 1,
+        heartRateSamplingEnabled: false,
+        extendedRuntimeEnabled: false,
         sleepGoalSeconds: 7 * 60 * 60,
         latestWakeTime: nil,
         fallbackAlarmTime: nil
