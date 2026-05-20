@@ -21,6 +21,8 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         encoder.dateEncodingStrategy = .iso8601
         return encoder
     }()
+    private var consecutiveMissingReports = 0
+    private static let lastInstalledSeenAtKey = "SleepKitProbe.watch.lastInstalledSeenAt"
 
     override init() {
         super.init()
@@ -38,6 +40,9 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     }
 
     func refreshConnectionStatus() {
+        if WCSession.isSupported(), WCSession.default.activationState != .activated {
+            WCSession.default.activate()
+        }
         updateConnectionDescription()
     }
 
@@ -153,14 +158,55 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
             diagnosticsDescription = "activation=\(session.activationState.rawValue)"
             return
         }
-        diagnosticsDescription = "paired=\(session.isPaired) installed=\(session.isWatchAppInstalled) reachable=\(session.isReachable) activation=\(session.activationState.rawValue)"
+        diagnosticsDescription = diagnostics(for: session)
         if session.isPaired && session.isWatchAppInstalled {
+            consecutiveMissingReports = 0
+            rememberInstalledWatchAppSeen()
             connectionDescription = session.isReachable ? "Connected" : "Installed, Not Reachable"
         } else if session.isPaired {
-            connectionDescription = "Paired, Watch App Missing"
+            consecutiveMissingReports += 1
+            if recentlySawInstalledWatchApp {
+                connectionDescription = "Previously Installed, Not Reachable"
+            } else {
+                connectionDescription = "Paired, Watch App Missing"
+            }
         } else {
+            consecutiveMissingReports = 0
             connectionDescription = "Not Paired"
         }
+    }
+
+    private func diagnostics(for session: WCSession) -> String {
+        let lastSeen = lastInstalledWatchAppSeenAt.map(Self.diagnosticDateString) ?? "never"
+        return "paired=\(session.isPaired) installed=\(session.isWatchAppInstalled) reachable=\(session.isReachable) activation=\(session.activationState.rawValue) missingReports=\(consecutiveMissingReports) lastInstalledSeenAt=\(lastSeen)"
+    }
+
+    nonisolated private static func diagnosticDateString(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
+
+    private func rememberInstalledWatchAppSeen() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.lastInstalledSeenAtKey)
+    }
+
+    private var lastInstalledWatchAppSeenAt: Date? {
+        let value = UserDefaults.standard.double(forKey: Self.lastInstalledSeenAtKey)
+        guard value > 0 else { return nil }
+        return Date(timeIntervalSince1970: value)
+    }
+
+    private var recentlySawInstalledWatchApp: Bool {
+        if let lastInstalledWatchAppSeenAt,
+           Date().timeIntervalSince(lastInstalledWatchAppSeenAt) < 7 * 86_400 {
+            return true
+        }
+        if let lastEpochReceivedAt,
+           Date().timeIntervalSince(lastEpochReceivedAt) < 7 * 86_400 {
+            return true
+        }
+        return false
     }
 }
 
@@ -175,12 +221,16 @@ extension PhoneWatchConnectivityManager: WCSessionDelegate {
     }
 
     func sessionDidBecomeInactive(_ session: WCSession) {
-        updateConnectionDescription()
+        DispatchQueue.main.async {
+            self.updateConnectionDescription()
+        }
     }
 
     func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
-        updateConnectionDescription()
+        DispatchQueue.main.async {
+            self.updateConnectionDescription()
+        }
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
