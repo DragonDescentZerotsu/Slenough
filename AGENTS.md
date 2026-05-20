@@ -27,7 +27,7 @@ Phase 2 仍然不是正式闹钟。UI 和 README 必须持续提示：这是实�
 3. 默认 60 秒 epoch、`motionSampleHz = 1`。
 4. 默认 passive HR：每个 epoch 查询该分钟内 watchOS 已保存的 heart-rate samples，不启动 workout live HR。
 5. Baseline `SleepRuleEngine` 输出 `predictedState`、`asleepProbability`、`estimatedSleepSeconds`。
-6. WatchConnectivity summary sync，含 queued delivery fallback。
+6. WatchConnectivity summary sync，默认每 15 个 epoch batch 一次，含 queued delivery fallback。
 7. iPhone `Watch` tab，包含 connection diagnostics、latest epoch、sync request、epoch/event CSV export。
 8. iPhone export 去重，避免 `sendMessage` 和 `transferUserInfo` 双路径导致重复 epoch。
 
@@ -78,7 +78,7 @@ WatchApp/
 - `WatchSessionManager.swift`：Watch 端核心 session 管理。负责 session 生命周期、extended runtime、motion sampler、heart-rate sampler、rule engine、epoch 生成、本地日志和 WatchConnectivity 发送。
 - `MotionSampler.swift`：使用 `CMMotionManager` 采集加速度，每个 epoch 聚合 mean/std/magnitude/motionScore/motionBurstCount。当前 `motionScore = accelMagnitudeStd`。
 - `HeartRateSampler.swift`：默认使用 HealthKit read authorization，并在每个 epoch 结束时被动查询该分钟内 watchOS 已保存的 heart-rate samples。它不会强制光学心率传感器每分钟测量一次；不可用时不崩溃，epoch 中记录 `heartRateAvailable=false`。文件中仍保留 `HKWorkoutSession` + `HKLiveWorkoutBuilder` 实验路径，后续如需对比 workout 级 HR 可重新接入。
-- `WatchConnectivitySender.swift`：Watch -> iPhone 低频 summary 同步。实时 reachable 时用 `sendMessage`，同时用 `transferUserInfo` 保底。
+- `WatchConnectivitySender.swift`：Watch -> iPhone 低频 summary 同步。默认缓存 epoch summaries，每 15 个 epoch batch 发送；实时 reachable 时用 `sendMessage`，同时用 `transferUserInfo` 保底。
 - `WatchLocalLogStore.swift`：Watch 本地 JSONL 日志。不能只依赖 iPhone 实时同步。
 - `WatchApp.entitlements`：Watch HealthKit entitlement。
 
@@ -91,7 +91,7 @@ Shared/
   Phase2CSVEncoder.swift
 ```
 
-- `Phase2Models.swift`：`SleepState`、`ProbeSessionState`、`SleepRuleConfig`、`EpochSummary`、`WatchEpoch`、`WatchEventRecord` 等共享模型。
+- `Phase2Models.swift`：`SleepState`、`ProbeSessionState`、`SleepRuleConfig`、`EpochSummary`、`WatchEpoch`、`WatchEventRecord` 等共享模型。`SleepRuleConfig.syncEveryNEpochs` 当前默认值为 15，用于单独测试降低 sync 频率对电量的影响。
 - `SleepRuleEngine.swift`：第一版可解释 motion-first 规则模型。默认 settling 10 分钟，连续低 motion 才判定 asleep，高 motion/burst 判定 awake/restless。只累计 `predictedState == asleep` 的 epoch。
 - `Phase2CSVEncoder.swift`：导出 Watch epoch summary 和 Watch event CSV。
 

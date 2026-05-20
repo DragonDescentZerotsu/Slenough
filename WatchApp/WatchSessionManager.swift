@@ -92,6 +92,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         state = .stopping
         motionSampler.stop()
         heartRateSampler.stop()
+        connectivity.flushBufferedSummaries()
         extendedRuntimeSession?.invalidate()
         recordEvent("motion_stopped", message: reason)
         recordEvent("heart_rate_stopped", message: reason)
@@ -130,7 +131,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     }
 
     func syncNow() {
-        connectivity.flushQueuedUserInfo()
+        connectivity.flushBufferedSummaries()
         recordEvent("connectivity_sync_requested", message: nil)
     }
 
@@ -139,7 +140,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         if state == .idle || state == .stopped {
             ruleEngine.reset(config: newConfig)
         }
-        recordEvent("config_received", message: "epochSeconds=\(Int(newConfig.epochSeconds)) goalSeconds=\(Int(newConfig.sleepGoalSeconds))")
+        recordEvent("config_received", message: "epochSeconds=\(Int(newConfig.epochSeconds)) goalSeconds=\(Int(newConfig.sleepGoalSeconds)) syncEveryNEpochs=\(newConfig.syncEveryNEpochs)")
     }
 
     private func handleMotionEpoch(_ stats: MotionEpochStats) {
@@ -232,9 +233,17 @@ final class WatchSessionManager: NSObject, ObservableObject {
             estimatedSleepSeconds: output.estimatedSleepSeconds,
             algorithmVersion: SleepRuleEngine.algorithmVersion
         )
-        connectivity.send(summary: summary)
-        recordEvent("connectivity_sent", message: "epochIndex=\(epochIndex)")
+        connectivity.queue(summary: summary)
+        if shouldFlushSummaries(afterEpochIndex: epochIndex) {
+            connectivity.flushBufferedSummaries()
+            recordEvent("connectivity_sent", message: "epochIndex=\(epochIndex) syncEveryNEpochs=\(config.syncEveryNEpochs)")
+        }
         epochIndex += 1
+    }
+
+    private func shouldFlushSummaries(afterEpochIndex epochIndex: Int) -> Bool {
+        guard config.syncEveryNEpochs > 1 else { return true }
+        return epochIndex == 0 || (epochIndex + 1).isMultiple(of: config.syncEveryNEpochs)
     }
 
     private func startExtendedRuntime() {

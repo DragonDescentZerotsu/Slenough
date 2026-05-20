@@ -101,11 +101,11 @@ Pass criteria:
 
 ## Watch App Controls
 
-- `Start Session`: begins 1 Hz motion sampling, passive per-epoch heart-rate queries, local Watch logging, and epoch summary sync.
-- `Stop Session`: stops samplers and records session stop events.
+- `Start Session`: begins 1 Hz motion sampling, passive per-epoch heart-rate queries, local Watch logging, and batched epoch summary sync.
+- `Stop Session`: stops samplers, flushes buffered epoch summaries, and records session stop events.
 - `Mark Awake`: adds a one-epoch manual awake override for debugging.
 - `Mark Asleep`: adds a one-epoch manual asleep override for debugging.
-- `Export/Sync Now`: requests WatchConnectivity to flush queued user info to iPhone.
+- `Export/Sync Now`: requests WatchConnectivity to flush buffered epoch summaries and queued user info to iPhone.
 
 ## iPhone Watch Tab
 
@@ -129,6 +129,13 @@ Pass criteria:
 - `asleep_probability`: baseline rule confidence from `0.0` to `1.0`.
 - `estimated_sleep_seconds`: cumulative estimated sleep.
 - `algorithm_version`: current rule engine version.
+
+Default sync policy:
+
+- Watch still generates and locally logs one epoch every 60 seconds.
+- Watch -> iPhone summary sync is batched every 15 epochs by default (`syncEveryNEpochs = 15`).
+- Manual `Export/Sync Now`, iPhone `Request Watch Sync`, and Watch `Stop Session` flush buffered summaries.
+- This is a battery experiment: sleep detection still runs locally on Watch, so lower iPhone sync frequency should not change Watch-side classification.
 
 `watch_events.csv`:
 

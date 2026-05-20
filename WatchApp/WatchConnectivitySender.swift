@@ -18,6 +18,7 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
 
     private var queuedUserInfo: [[String: Any]] = []
     private var pendingUserInfo: [[String: Any]] = []
+    private var bufferedSummaries: [EpochSummary] = []
 
     override init() {
         super.init()
@@ -28,12 +29,32 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
     }
 
     func send(summary: EpochSummary) {
+        send(summaries: [summary])
+    }
+
+    func queue(summary: EpochSummary) {
+        bufferedSummaries.append(summary)
+    }
+
+    func flushBufferedSummaries() {
+        guard !bufferedSummaries.isEmpty else {
+            flushQueuedUserInfo()
+            return
+        }
+        let summaries = bufferedSummaries
+        bufferedSummaries.removeAll()
+        send(summaries: summaries)
+        flushQueuedUserInfo()
+    }
+
+    private func send(summaries: [EpochSummary]) {
         guard WCSession.isSupported(),
-              let data = try? encoder.encode(summary) else {
+              !summaries.isEmpty,
+              let data = try? encoder.encode(summaries) else {
             return
         }
 
-        let payload: [String: Any] = ["type": "epoch_summary", "payload": data]
+        let payload: [String: Any] = ["type": "epoch_summary_batch", "payload": data]
         guard WCSession.default.activationState == .activated else {
             pendingUserInfo.append(payload)
             return

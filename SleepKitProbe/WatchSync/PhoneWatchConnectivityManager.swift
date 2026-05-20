@@ -141,6 +141,19 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
             latestSummary = summary
             lastEpochReceivedAt = Date()
             statusMessage = "Received epoch \(summary.epochIndex)"
+        case "epoch_summary_batch":
+            guard let data = message["payload"] as? Data,
+                  let summaries = try? decoder.decode([EpochSummary].self, from: data),
+                  let latest = summaries.max(by: { $0.epochIndex < $1.epochIndex }) else {
+                statusMessage = "Received malformed epoch batch"
+                return
+            }
+            summaries.sorted { $0.epochIndex < $1.epochIndex }.forEach { summary in
+                store.append(summary: summary)
+            }
+            latestSummary = latest
+            lastEpochReceivedAt = Date()
+            statusMessage = "Received \(summaries.count) epochs through batch"
         default:
             statusMessage = "Received \(type)"
         }

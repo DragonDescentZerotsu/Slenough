@@ -44,5 +44,6 @@ For Phase 2, the key questions are:
 - How often does passive HR appear? Inspect `heart_rate_available` and `heart_rate_sample_count`.
 - Is battery drain acceptable with 1 Hz motion and passive HR, compared with the earlier workout-level HR run?
 - Does estimated sleep duration roughly track Apple Health after the fact?
+- Does battery drain improve after lowering Watch -> iPhone sync to a 15-epoch batch interval while keeping motion and HR settings unchanged?
 
 Do not use HealthKit sleepAnalysis as a real-time trigger.

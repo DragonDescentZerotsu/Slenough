@@ -57,6 +57,7 @@ struct SleepRuleConfig: Codable, Equatable {
     var motionSampleHz: Double
     var heartRateSamplingEnabled: Bool
     var extendedRuntimeEnabled: Bool
+    var syncEveryNEpochs: Int
     var sleepGoalSeconds: TimeInterval
     var latestWakeTime: Date?
     var fallbackAlarmTime: Date?
@@ -74,6 +75,7 @@ struct SleepRuleConfig: Codable, Equatable {
         motionSampleHz: 1,
         heartRateSamplingEnabled: true,
         extendedRuntimeEnabled: false,
+        syncEveryNEpochs: 15,
         sleepGoalSeconds: 7 * 60 * 60,
         latestWakeTime: nil,
         fallbackAlarmTime: nil
