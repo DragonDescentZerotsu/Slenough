@@ -23,6 +23,7 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
     }()
     private var consecutiveMissingReports = 0
     private static let lastInstalledSeenAtKey = "SleepKitProbe.watch.lastInstalledSeenAt"
+    private static let lastWatchAliveSeenAtKey = "SleepKitProbe.watch.lastAliveSeenAt"
 
     override init() {
         super.init()
@@ -154,6 +155,10 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
             latestSummary = latest
             lastEpochReceivedAt = Date()
             statusMessage = "Received \(summaries.count) epochs through batch"
+        case "watch_app_alive":
+            rememberWatchAliveSeen()
+            statusMessage = "Received Watch alive ping"
+            updateConnectionDescription()
         default:
             statusMessage = "Received \(type)"
         }
@@ -178,7 +183,9 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
             connectionDescription = session.isReachable ? "Connected" : "Installed, Not Reachable"
         } else if session.isPaired {
             consecutiveMissingReports += 1
-            if recentlySawInstalledWatchApp {
+            if recentlySawWatchAlive {
+                connectionDescription = "Watch App Alive, Install State Stale"
+            } else if recentlySawInstalledWatchApp {
                 connectionDescription = "Previously Installed, Not Reachable"
             } else {
                 connectionDescription = "Paired, Watch App Missing"
@@ -191,7 +198,8 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
 
     private func diagnostics(for session: WCSession) -> String {
         let lastSeen = lastInstalledWatchAppSeenAt.map(Self.diagnosticDateString) ?? "never"
-        return "paired=\(session.isPaired) installed=\(session.isWatchAppInstalled) reachable=\(session.isReachable) activation=\(session.activationState.rawValue) missingReports=\(consecutiveMissingReports) lastInstalledSeenAt=\(lastSeen)"
+        let lastAlive = lastWatchAliveSeenAt.map(Self.diagnosticDateString) ?? "never"
+        return "paired=\(session.isPaired) installed=\(session.isWatchAppInstalled) reachable=\(session.isReachable) activation=\(session.activationState.rawValue) missingReports=\(consecutiveMissingReports) lastInstalledSeenAt=\(lastSeen) lastWatchAliveAt=\(lastAlive)"
     }
 
     nonisolated private static func diagnosticDateString(_ date: Date) -> String {
@@ -204,10 +212,28 @@ final class PhoneWatchConnectivityManager: NSObject, ObservableObject {
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.lastInstalledSeenAtKey)
     }
 
+    private func rememberWatchAliveSeen() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.lastWatchAliveSeenAtKey)
+    }
+
     private var lastInstalledWatchAppSeenAt: Date? {
         let value = UserDefaults.standard.double(forKey: Self.lastInstalledSeenAtKey)
         guard value > 0 else { return nil }
         return Date(timeIntervalSince1970: value)
+    }
+
+    private var lastWatchAliveSeenAt: Date? {
+        let value = UserDefaults.standard.double(forKey: Self.lastWatchAliveSeenAtKey)
+        guard value > 0 else { return nil }
+        return Date(timeIntervalSince1970: value)
+    }
+
+    private var recentlySawWatchAlive: Bool {
+        if let lastWatchAliveSeenAt,
+           Date().timeIntervalSince(lastWatchAliveSeenAt) < 10 * 60 {
+            return true
+        }
+        return false
     }
 
     private var recentlySawInstalledWatchApp: Bool {

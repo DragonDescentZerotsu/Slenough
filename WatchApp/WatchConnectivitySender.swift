@@ -25,6 +25,9 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
         if WCSession.isSupported() {
             WCSession.default.delegate = self
             WCSession.default.activate()
+            if WCSession.default.activationState == .activated {
+                sendAlivePing()
+            }
         }
     }
 
@@ -78,8 +81,31 @@ final class WatchConnectivitySender: NSObject, WCSessionDelegate {
         queuedUserInfo.removeAll()
     }
 
+    func sendAlivePing() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        let payload: [String: Any] = [
+            "type": "watch_app_alive",
+            "timestamp": Date(),
+            "bundleIdentifier": Bundle.main.bundleIdentifier ?? "unknown",
+            "activation": session.activationState.rawValue,
+            "reachable": session.isReachable
+        ]
+        guard session.activationState == .activated else {
+            pendingUserInfo.append(payload)
+            return
+        }
+        if session.isReachable {
+            session.sendMessage(payload, replyHandler: nil) { [weak self] _ in
+                self?.queuedUserInfo.append(payload)
+            }
+        }
+        session.transferUserInfo(payload)
+    }
+
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if activationState == .activated {
+            sendAlivePing()
             flushQueuedUserInfo()
         }
     }
