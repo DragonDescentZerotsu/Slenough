@@ -63,19 +63,19 @@ struct SleepRuleConfig: Codable, Equatable {
     var fallbackAlarmTime: Date?
 
     static let `default` = SleepRuleConfig(
-        epochSeconds: 60,
+        epochSeconds: 300,
         settlingMinutes: 10,
-        lowMotionConsecutiveEpochsForSleep: 10,
-        highMotionEpochsForAwake: 2,
+        lowMotionConsecutiveEpochsForSleep: 2,
+        highMotionEpochsForAwake: 1,
         countRestlessAsSleep: false,
         lowMotionThreshold: 0.035,
         highMotionThreshold: 0.12,
         motionBurstThreshold: 2,
         heartRateDropThreshold: 5,
-        motionSampleHz: 1,
+        motionSampleHz: 0.2,
         heartRateSamplingEnabled: true,
         extendedRuntimeEnabled: false,
-        syncEveryNEpochs: 15,
+        syncEveryNEpochs: 3,
         sleepGoalSeconds: 7 * 60 * 60,
         latestWakeTime: nil,
         fallbackAlarmTime: nil

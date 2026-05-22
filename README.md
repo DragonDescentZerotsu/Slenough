@@ -2,7 +2,7 @@
 
 SleepKitProbe is a local-only iPhone + Apple Watch research app for validating a future "sleep enough, then wake" alarm.
 
-Current focus: **Phase 2 Watch-side Sensor Probe**. The Watch app records 1 Hz motion epochs, passive per-epoch heart-rate availability, and a baseline awake/asleep estimate during a user-started session. The iPhone app receives low-frequency summaries, displays the latest state, and exports CSV logs.
+Current focus: **Phase 2 Watch-side Sensor Probe**. The Watch app records low-power motion epochs, passive per-epoch heart-rate availability, and a baseline awake/asleep estimate during a user-started session. The iPhone app receives low-frequency summaries, displays the latest state, and exports CSV logs.
 
 This is not a reliable alarm. During every test, set a normal system alarm as backup.
 
@@ -12,8 +12,8 @@ Completed on branch `custom-asleep`:
 
 - Phase 1 HealthKit `sleepAnalysis` real-time validation and CSV/JSONL export.
 - watchOS app target with start/stop session UI.
-- 60-second Watch epochs with 1 Hz Core Motion sampling by default.
-- Passive per-epoch HealthKit heart-rate lookup. This reads samples watchOS already saved; it does not force a heart-rate measurement every minute.
+- Low-power 300-second Watch epochs with 0.2 Hz Core Motion sampling by default.
+- Passive per-epoch HealthKit heart-rate lookup. This reads samples watchOS already saved; it does not force new heart-rate measurements.
 - Motion-first baseline sleep/wake rule engine.
 - Watch local event/epoch logging plus WatchConnectivity summary sync to iPhone.
 - iPhone Watch tab with connection diagnostics, latest epoch display, sync request, and Watch CSV export.
@@ -31,7 +31,7 @@ Not completed yet:
 ```text
 SleepKitProbe.xcodeproj
 SleepKitProbe/        iPhone SwiftUI app, HealthKit post-hoc sleepAnalysis, Watch sync UI
-WatchApp/             watchOS SwiftUI app, sensor session, 1 Hz motion and passive HR queries
+WatchApp/             watchOS SwiftUI app, sensor session, low-power motion and passive HR queries
 Shared/               shared Phase 2 models, rule engine, CSV encoder
 SleepKitProbeTests/   unit tests
 Docs/                 experiment notes and protocols
@@ -71,8 +71,8 @@ If the Watch app fails to install, remove old copies from both iPhone and Watch,
 
 1. Open `Sleep Probe` on Apple Watch.
 2. Tap `Start Session`.
-3. Keep the wrist still for 5 minutes.
-4. Move the wrist for 1 minute.
+3. Keep the wrist still for 10-15 minutes.
+4. Move the wrist for 5 minutes.
 5. Tap `Stop Session`.
 6. Open the iPhone app and go to the `Watch` tab.
 7. Tap `Request Watch Sync` if needed.

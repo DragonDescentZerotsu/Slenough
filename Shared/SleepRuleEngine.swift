@@ -1,7 +1,7 @@
 import Foundation
 
 struct SleepRuleEngine {
-    static let algorithmVersion = "motion-baseline-v1"
+    static let algorithmVersion = "motion-baseline-v2-low-power"
 
     private(set) var config: SleepRuleConfig
     private(set) var consecutiveLowMotionEpochs = 0

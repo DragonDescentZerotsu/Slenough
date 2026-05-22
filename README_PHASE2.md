@@ -12,7 +12,7 @@ Implemented:
 
 - Watch target and `SleepKitProbe Watch App` scheme.
 - Watch `Start Session` / `Stop Session` flow.
-- 60-second epochs with default `motionSampleHz = 1`.
+- Low-power 300-second epochs with default `motionSampleHz = 0.2`.
 - Passive HealthKit heart-rate sample lookup for each epoch.
 - Local Watch JSONL logging.
 - WatchConnectivity summary delivery with queued delivery fallback.
@@ -70,8 +70,8 @@ If Watch installation fails with a generic "could not be installed" message:
 
 1. Open the Watch app.
 2. Tap `Start Session`.
-3. Keep the wrist still for 5 minutes.
-4. Move the wrist for 1 minute.
+3. Keep the wrist still for 10-15 minutes.
+4. Move the wrist for 5 minutes.
 5. Tap `Stop Session`.
 6. Open the iPhone app and go to the `Watch` tab.
 7. Tap `Request Watch Sync` if needed.
@@ -83,7 +83,7 @@ Pass criteria:
 - Still periods have lower `motion_score`.
 - Moving periods have higher `motion_score`.
 - The app does not crash if heart rate is unavailable.
-- `heart_rate_sample_count` shows how many passive HealthKit HR samples existed in each minute.
+- `heart_rate_sample_count` shows how many passive HealthKit HR samples existed in each epoch.
 - `predicted_state`, `asleep_probability`, and `estimated_sleep_seconds` are populated.
 
 ## Overnight Test
@@ -101,7 +101,7 @@ Pass criteria:
 
 ## Watch App Controls
 
-- `Start Session`: begins 1 Hz motion sampling, passive per-epoch heart-rate queries, local Watch logging, and batched epoch summary sync.
+- `Start Session`: begins 0.2 Hz motion sampling, passive per-epoch heart-rate queries, local Watch logging, and batched epoch summary sync.
 - `Stop Session`: stops samplers, flushes buffered epoch summaries, and records session stop events.
 - `Mark Awake`: adds a one-epoch manual awake override for debugging.
 - `Mark Asleep`: adds a one-epoch manual asleep override for debugging.
@@ -123,7 +123,7 @@ Pass criteria:
 - `start_date` / `end_date`: epoch time window.
 - `motion_score`: current baseline is acceleration magnitude standard deviation.
 - `heart_rate_available`, `heart_rate_latest`, `heart_rate_sample_count`: heart-rate availability.
-- `heart_rate_sample_count`: number of passive HealthKit HR samples found inside that epoch. `0` means watchOS did not provide a sample for that minute.
+- `heart_rate_sample_count`: number of passive HealthKit HR samples found inside that epoch. `0` means watchOS did not provide a sample during that epoch.
 - `battery_level`: Watch battery at epoch time.
 - `predicted_state`: `unknown`, `awake`, `asleep`, or `restless`.
 - `asleep_probability`: baseline rule confidence from `0.0` to `1.0`.
@@ -132,10 +132,10 @@ Pass criteria:
 
 Default sync policy:
 
-- Watch still generates and locally logs one epoch every 60 seconds.
-- Watch -> iPhone summary sync is batched every 15 epochs by default (`syncEveryNEpochs = 15`).
+- Watch still generates and locally logs one epoch every 300 seconds.
+- Watch -> iPhone summary sync is batched every 3 epochs by default (`syncEveryNEpochs = 3`), so nominal sync cadence remains about 15 minutes.
 - Manual `Export/Sync Now`, iPhone `Request Watch Sync`, and Watch `Stop Session` flush buffered summaries.
-- This is a battery experiment: sleep detection still runs locally on Watch, so lower iPhone sync frequency should not change Watch-side classification.
+- This is a battery experiment: sleep detection still runs locally on Watch at 5-minute resolution, so iPhone sync frequency should not control classification.
 
 `watch_events.csv`:
 
@@ -174,7 +174,7 @@ These are baseline thresholds for data collection, not final product values.
 ## Current Limits
 
 - The rule engine is a motion-first baseline, not a medical sleep model.
-- Default heart-rate collection is passive: each epoch queries HealthKit for heart-rate samples watchOS already saved. This avoids workout-level HR collection, but it may leave `heart_rate_available=false` if watchOS did not save a sample during that minute.
+- Default heart-rate collection is passive: each epoch queries HealthKit for heart-rate samples watchOS already saved. This avoids workout-level HR collection, but it may leave `heart_rate_available=false` if watchOS did not save a sample during that epoch.
 - The code retains an experimental `HKWorkoutSession` live HR path for future testing. Using that path can affect Activity rings and battery life.
 - Extended runtime availability is recorded but system behavior still depends on watchOS policy.
 - Watch logs are saved locally on Watch; iPhone currently receives low-frequency epoch summaries.
