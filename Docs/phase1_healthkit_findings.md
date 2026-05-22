@@ -27,7 +27,7 @@ HealthKit remains in the project only for next-day official sleep comparison and
 
 The app now keeps Phase 1 screens and exports for post-hoc validation, but active development has moved to Phase 2:
 
-- Watch records 300-second sensor epochs during a user-started session.
+- Watch records 60-second sensor epochs during a user-started session.
 - Motion sampling defaults to 0.2 Hz.
 - Heart-rate collection defaults to passive HealthKit epoch queries, not workout-level live HR.
 - iPhone receives Watch summaries and exports `watch_epoch_summaries.csv` / `watch_events.csv`.

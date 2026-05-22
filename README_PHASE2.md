@@ -12,7 +12,7 @@ Implemented:
 
 - Watch target and `SleepKitProbe Watch App` scheme.
 - Watch `Start Session` / `Stop Session` flow.
-- Low-power 300-second epochs with default `motionSampleHz = 0.2`.
+- Low-motion 60-second epochs with default `motionSampleHz = 0.2`.
 - Passive HealthKit heart-rate sample lookup for each epoch.
 - Local Watch JSONL logging.
 - WatchConnectivity summary delivery with queued delivery fallback.
@@ -132,10 +132,10 @@ Pass criteria:
 
 Default sync policy:
 
-- Watch still generates and locally logs one epoch every 300 seconds.
-- Watch -> iPhone summary sync is batched every 3 epochs by default (`syncEveryNEpochs = 3`), so nominal sync cadence remains about 15 minutes.
+- Watch still generates and locally logs one epoch every 60 seconds.
+- Watch -> iPhone summary sync is batched every 15 epochs by default (`syncEveryNEpochs = 15`), so nominal sync cadence remains about 15 minutes.
 - Manual `Export/Sync Now`, iPhone `Request Watch Sync`, and Watch `Stop Session` flush buffered summaries.
-- This is a battery experiment: sleep detection still runs locally on Watch at 5-minute resolution, so iPhone sync frequency should not control classification.
+- This is a battery/runtime experiment: sleep detection still runs locally on Watch at 1-minute resolution, while motion sampling stays at 0.2 Hz.
 
 `watch_events.csv`:
 

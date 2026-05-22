@@ -12,7 +12,7 @@ Completed on branch `custom-asleep`:
 
 - Phase 1 HealthKit `sleepAnalysis` real-time validation and CSV/JSONL export.
 - watchOS app target with start/stop session UI.
-- Low-power 300-second Watch epochs with 0.2 Hz Core Motion sampling by default.
+- Low-motion 60-second Watch epochs with 0.2 Hz Core Motion sampling by default.
 - Passive per-epoch HealthKit heart-rate lookup. This reads samples watchOS already saved; it does not force new heart-rate measurements.
 - Motion-first baseline sleep/wake rule engine.
 - Watch local event/epoch logging plus WatchConnectivity summary sync to iPhone.

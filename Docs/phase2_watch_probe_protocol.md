@@ -42,7 +42,7 @@ For Phase 2, the key questions are:
 - Are missing data periods visible instead of silent?
 - Does motion score separate stillness from movement?
 - How often does passive HR appear? Inspect `heart_rate_available` and `heart_rate_sample_count`.
-- Is battery drain acceptable with 0.2 Hz motion, 300-second epochs, and passive HR, compared with earlier high-frequency runs?
+- Is battery drain acceptable with 0.2 Hz motion, 60-second epochs, and passive HR, compared with earlier high-frequency runs?
 - Does estimated sleep duration roughly track Apple Health after the fact?
 - Does battery drain improve after switching to the low-power profile while preserving enough accuracy for overnight sleep-duration estimation?
 

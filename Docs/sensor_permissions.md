@@ -24,8 +24,8 @@ The default path does not start `HKWorkoutSession`. An experimental live HR path
 Current default behavior:
 
 - `motionSampleHz = 0.2`
-- `epochSeconds = 300`
-- `syncEveryNEpochs = 3`
+- `epochSeconds = 60`
+- `syncEveryNEpochs = 15`
 - `heartRateSamplingEnabled = true`
 - `extendedRuntimeEnabled = false`
 
